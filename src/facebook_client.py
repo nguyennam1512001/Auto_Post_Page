@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -113,47 +112,11 @@ class FacebookPagePublisher:
         return video_id
 
     def wait_for_post(self, page_id: str, video_id: str, timeout_seconds: int = 900) -> PublishedPost:
-        page_token = self._page_token(page_id)
-        deadline = time.monotonic() + timeout_seconds
-        last_status = ""
-        while time.monotonic() < deadline:
-            response = self.http.get(
-                f"{self.base_url}/{video_id}",
-                params={
-                    # Chỉ đọc các field thuộc Video. Truy vấn post_id rồi ghép
-                    # PAGE_ID_POST_ID có thể bị Graph API v26 trả lỗi 100
-                    # "Invalid parameter", dù video đã đăng thành công.
-                    "fields": "id,permalink_url,status",
-                    "access_token": page_token,
-                },
-                timeout=60,
-            )
-            payload = self._raise_for_graph(response)
-            status = payload.get("status") or {}
-            last_status = str(status)
-            video_status = status.get("video_status") if isinstance(status, dict) else ""
-            if video_status == "error":
-                raise RuntimeError(f"Meta xử lý video thất bại: {status}")
-
-            permalink = str(payload.get("permalink_url") or "")
-            if permalink:
-                return PublishedPost(
-                    video_id=video_id,
-                    post_id="",
-                    permalink_url=permalink,
-                )
-
-            # Một số Page không trả permalink_url trên Video node. Khi Meta đã
-            # xử lý xong, URL video chuẩn này vẫn là Post Link có thể mở/chia sẻ.
-            if video_status == "ready":
-                return PublishedPost(
-                    video_id=video_id,
-                    post_id="",
-                    permalink_url=f"https://www.facebook.com/{page_id}/videos/{video_id}/",
-                )
-            time.sleep(15)
-
-        raise TimeoutError(
-            "Hết thời gian chờ Meta tạo Post Link. "
-            f"Trạng thái cuối: {last_status}"
+        # Không gọi API để kiểm tra lại video/post. Graph API v26 có thể trả
+        # lỗi 100 cho các field của Video node dù upload đã thành công. PAGE_ID
+        # và FB_UPLOAD_ID đã đủ để tạo URL video công khai dùng làm Post Link.
+        return PublishedPost(
+            video_id=video_id,
+            post_id="",
+            permalink_url=f"https://www.facebook.com/{page_id}/videos/{video_id}/",
         )
