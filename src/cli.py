@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import tempfile
+import time
 from contextlib import AsyncExitStack
 from pathlib import Path
 
@@ -28,7 +29,9 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
         settings.google_sheet_tab,
         settings.google_credentials,
     )
+    sheet_started = time.monotonic()
     rows = sheet.pending_rows()
+    print(f"Đọc Google Sheet: {time.monotonic() - sheet_started:.1f}s")
     if limit is not None:
         rows = rows[:limit]
 
@@ -59,12 +62,18 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
     async with AsyncExitStack() as stack:
         telegram: TelegramDownloader | None = None
         for row in rows:
+            row_started = time.monotonic()
             try:
                 sheet.update(row.row_number, **{COL_STATUS: "Đang xử lý"})
                 if row.post_link and not row.post_id:
+                    recover_started = time.monotonic()
                     post_id = publisher.recover_post_id(
                         row.page_id,
                         row.post_link,
+                    )
+                    print(
+                        f"Dòng {row.row_number}: lấy POST_ID mất "
+                        f"{time.monotonic() - recover_started:.1f}s"
                     )
                     sheet.update(
                         row.row_number,
@@ -90,15 +99,25 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
                             )
                         )
                     with tempfile.TemporaryDirectory(prefix="auto-post-page-") as temp_dir:
+                        download_started = time.monotonic()
                         video_path = await telegram.download_video(
                             row.telegram_link,
                             Path(temp_dir),
                         )
+                        print(
+                            f"Dòng {row.row_number}: tải Telegram mất "
+                            f"{time.monotonic() - download_started:.1f}s"
+                        )
+                        upload_started = time.monotonic()
                         video_id = publisher.upload_video(
                             row.page_id,
                             video_path,
                             row.text_content,
                             title=row.description,
+                        )
+                        print(
+                            f"Dòng {row.row_number}: upload Meta mất "
+                            f"{time.monotonic() - upload_started:.1f}s"
                         )
                     sheet.update(
                         row.row_number,
@@ -108,7 +127,12 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
                         },
                     )
 
+                wait_started = time.monotonic()
                 post = publisher.wait_for_post(row.page_id, video_id)
+                print(
+                    f"Dòng {row.row_number}: chờ Meta tạo bài mất "
+                    f"{time.monotonic() - wait_started:.1f}s"
+                )
                 sheet.update(
                     row.row_number,
                     **{
@@ -118,7 +142,10 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
                         COL_STATUS: "Thành công",
                     },
                 )
-                print(f"Dòng {row.row_number}: {post.permalink_url}")
+                print(
+                    f"Dòng {row.row_number}: {post.permalink_url} "
+                    f"(tổng {time.monotonic() - row_started:.1f}s)"
+                )
             except Exception as exc:  # noqa: BLE001
                 message = f"Lỗi: {exc}"
                 sheet.update(row.row_number, **{COL_STATUS: message[:500]})
