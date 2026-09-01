@@ -1,8 +1,8 @@
 # Auto_Post_Page
 
 Tự động đọc Google Sheet, tải video từ Telegram bằng tài khoản đã tham gia
-channel, đăng video công khai lên Facebook Page với nút **Gửi tin nhắn**, sau
-đó ghi `POST_ID`, `Post Link` và trạng thái ngược lại Sheet.
+channel, đăng video công khai lên Facebook Page với nút **Gửi tin nhắn**, sau đó ghi đúng bốn kết quả `FB_UPLOAD_ID`, `POST_ID`, `Post Link` và
+`POST_STATUS` ngược lại Sheet.
 
 ## Cột Google Sheet
 
@@ -11,7 +11,7 @@ Tên cột nằm ở hàng 1; vị trí A, B, C... không quan trọng.
 | Cột | Loại | Công dụng |
 |---|---|---|
 | `PAGE_ID` | bắt buộc | Page cần đăng bài |
-| `SP_Description` | không bắt buộc | Tiêu đề/mô tả nội bộ |
+| `Title` | không bắt buộc | Tiêu đề video (tối đa 255 ký tự) |
 | `Text_Content` | bắt buộc | Nội dung bài đăng |
 | `Telegram_video_link` | bắt buộc | Link `t.me/c/.../...` hoặc `t.me/username/...` |
 | `ID Video` | công thức Sheet | Tự tách ID từ `Post Link`; chương trình không ghi vào cột này |
@@ -22,7 +22,7 @@ Tên cột nằm ở hàng 1; vị trí A, B, C... không quan trọng.
 
 Bạn cần tạo đầy đủ các cột trên ở hàng 1. Chương trình không tự thêm, xóa hoặc
 di chuyển cột. Nếu thiếu cột, chương trình dừng và báo tên cột bị thiếu.
-Dòng đã có `POST_ID` hoặc `Post Link` sẽ được bỏ qua.
+Dòng đã có `Post Link` sẽ được bỏ qua.
 
 ## Repository secrets
 
@@ -81,8 +81,8 @@ limit = 1
 ## Cơ chế chống đăng trùng
 
 Ngay sau khi upload xong, chương trình ghi `FB_UPLOAD_ID`. Nếu Meta vẫn đang xử
-lý video hoặc CTA chưa xác minh được, lần chạy tiếp theo dùng lại Video ID đó
-để kiểm tra, không tải và đăng video lần nữa.
+lý video, lần chạy tiếp theo dùng lại Video ID đó để lấy `POST_ID` và
+`Post Link`, không tải hoặc đăng video lần nữa.
 
-Chỉ khi bài có `post_id`, `permalink_url` và CTA trả về là `MESSAGE_PAGE`, chương
-trình mới ghi trạng thái `Thành công - CTA MESSAGE_PAGE`.
+Chương trình chỉ đọc các field `post_id`, `permalink_url` và `status`; không
+đọc lại `call_to_action` vì field này không được hỗ trợ trên Video node.
