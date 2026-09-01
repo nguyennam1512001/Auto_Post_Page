@@ -120,9 +120,10 @@ class FacebookPagePublisher:
             response = self.http.get(
                 f"{self.base_url}/{video_id}",
                 params={
-                    # call_to_action không phải field đọc được trên Video ở
-                    # Graph API v26; cần lấy post_id rồi đọc từ Page Post.
-                    "fields": "id,post_id,permalink_url,status",
+                    # Chỉ đọc các field thuộc Video. Truy vấn post_id rồi ghép
+                    # PAGE_ID_POST_ID có thể bị Graph API v26 trả lỗi 100
+                    # "Invalid parameter", dù video đã đăng thành công.
+                    "fields": "id,permalink_url,status",
                     "access_token": page_token,
                 },
                 timeout=60,
@@ -134,31 +135,21 @@ class FacebookPagePublisher:
             if video_status == "error":
                 raise RuntimeError(f"Meta xử lý video thất bại: {status}")
 
-            post_id = str(payload.get("post_id") or "")
             permalink = str(payload.get("permalink_url") or "")
-            if post_id and not permalink:
-                # Graph API có thể trả post_id chỉ gồm phần số. Khi đọc Page
-                # Post phải dùng object story ID PAGE_ID_POST_ID; nếu chỉ gửi
-                # phần số, Meta hiểu thành singular status API đã deprecated.
-                post_object_id = (
-                    post_id if "_" in post_id else f"{page_id}_{post_id}"
-                )
-                post_response = self.http.get(
-                    f"{self.base_url}/{post_object_id}",
-                    params={
-                        "fields": "id,permalink_url",
-                        "access_token": page_token,
-                    },
-                    timeout=60,
-                )
-                post_payload = self._raise_for_graph(post_response)
-                permalink = str(post_payload.get("permalink_url") or permalink)
             if permalink:
-                numeric_post_id = post_id.rsplit("_", 1)[-1] if post_id else ""
                 return PublishedPost(
                     video_id=video_id,
-                    post_id=numeric_post_id,
+                    post_id="",
                     permalink_url=permalink,
+                )
+
+            # Một số Page không trả permalink_url trên Video node. Khi Meta đã
+            # xử lý xong, URL video chuẩn này vẫn là Post Link có thể mở/chia sẻ.
+            if video_status == "ready":
+                return PublishedPost(
+                    video_id=video_id,
+                    post_id="",
+                    permalink_url=f"https://www.facebook.com/{page_id}/videos/{video_id}/",
                 )
             time.sleep(15)
 
