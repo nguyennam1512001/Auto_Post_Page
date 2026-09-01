@@ -120,7 +120,9 @@ class FacebookPagePublisher:
             response = self.http.get(
                 f"{self.base_url}/{video_id}",
                 params={
-                    "fields": "id,post_id,permalink_url,call_to_action,status",
+                    # call_to_action không phải field đọc được trên Video ở
+                    # Graph API v26; cần lấy post_id rồi đọc từ Page Post.
+                    "fields": "id,post_id,permalink_url,status",
                     "access_token": page_token,
                 },
                 timeout=60,
@@ -134,12 +136,26 @@ class FacebookPagePublisher:
 
             post_id = str(payload.get("post_id") or "")
             permalink = str(payload.get("permalink_url") or "")
-            cta = payload.get("call_to_action") or {}
-            cta_type = cta.get("type") if isinstance(cta, dict) else ""
-            if post_id and permalink and cta_type == "MESSAGE_PAGE":
-                if "_" in post_id:
-                    post_id = post_id.rsplit("_", 1)[-1]
-                return PublishedPost(video_id=video_id, post_id=post_id, permalink_url=permalink)
+            if post_id:
+                post_response = self.http.get(
+                    f"{self.base_url}/{post_id}",
+                    params={
+                        "fields": "id,permalink_url,call_to_action",
+                        "access_token": page_token,
+                    },
+                    timeout=60,
+                )
+                post_payload = self._raise_for_graph(post_response)
+                permalink = str(post_payload.get("permalink_url") or permalink)
+                cta = post_payload.get("call_to_action") or {}
+                cta_type = cta.get("type") if isinstance(cta, dict) else ""
+                if permalink and cta_type == "MESSAGE_PAGE":
+                    numeric_post_id = post_id.rsplit("_", 1)[-1]
+                    return PublishedPost(
+                        video_id=video_id,
+                        post_id=numeric_post_id,
+                        permalink_url=permalink,
+                    )
             time.sleep(15)
 
         raise TimeoutError(
