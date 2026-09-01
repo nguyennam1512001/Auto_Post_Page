@@ -20,6 +20,7 @@ class FacebookPagePublisher:
         self.access_token = access_token
         self.base_url = f"https://graph.facebook.com/{graph_version}"
         self.http = requests.Session()
+        self._page_tokens: dict[str, str] = {}
 
     @staticmethod
     def _raise_for_graph(response: requests.Response) -> dict:
@@ -35,13 +36,19 @@ class FacebookPagePublisher:
         return payload
 
     def _page_token(self, page_id: str) -> str:
+        cached = self._page_tokens.get(page_id)
+        if cached:
+            return cached
+
         response = self.http.get(
             f"{self.base_url}/{page_id}",
             params={"fields": "access_token", "access_token": self.access_token},
             timeout=60,
         )
         payload = self._raise_for_graph(response)
-        return payload.get("access_token") or self.access_token
+        page_token = payload.get("access_token") or self.access_token
+        self._page_tokens[page_id] = page_token
+        return page_token
 
     def upload_video(
         self,
