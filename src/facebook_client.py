@@ -120,7 +120,7 @@ class FacebookPagePublisher:
             response = self.http.get(
                 f"{self.base_url}/{video_id}",
                 params={
-                    "fields": "id,post_id,permalink_url,call_to_action,status",
+                    "fields": "id,post_id,permalink_url,status",
                     "access_token": page_token,
                 },
                 timeout=60,
@@ -134,15 +134,13 @@ class FacebookPagePublisher:
 
             post_id = str(payload.get("post_id") or "")
             permalink = str(payload.get("permalink_url") or "")
-            cta = payload.get("call_to_action") or {}
-            cta_type = cta.get("type") if isinstance(cta, dict) else ""
-            if post_id and permalink and cta_type == "MESSAGE_PAGE":
+            if post_id and permalink:
                 if "_" in post_id:
                     post_id = post_id.rsplit("_", 1)[-1]
                 return PublishedPost(video_id=video_id, post_id=post_id, permalink_url=permalink)
             time.sleep(15)
 
         raise TimeoutError(
-            "Hết thời gian chờ bài viết hoặc CTA MESSAGE_PAGE chưa xuất hiện. "
+            "Hết thời gian chờ Meta tạo POST_ID hoặc Post Link. "
             f"Trạng thái cuối: {last_status}"
         )
