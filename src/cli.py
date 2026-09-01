@@ -39,6 +39,12 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
     print(f"Tìm thấy {len(rows)} dòng cần xử lý.")
     if dry_run:
         for row in rows:
+            if row.post_link:
+                print(
+                    f"[DRY-RUN] Dòng {row.row_number}: lấy POST_ID từ "
+                    f"{row.post_link}"
+                )
+                continue
             ref = parse_message_link(row.telegram_link)
             print(
                 f"[DRY-RUN] Dòng {row.row_number}: Page {row.page_id}, "
@@ -55,6 +61,24 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
         for row in rows:
             try:
                 sheet.update(row.row_number, **{COL_STATUS: "Đang xử lý"})
+                if row.post_link and not row.post_id:
+                    post_id = publisher.recover_post_id(
+                        row.page_id,
+                        row.post_link,
+                    )
+                    sheet.update(
+                        row.row_number,
+                        **{
+                            COL_POST_ID: post_id,
+                            COL_STATUS: "Thành công",
+                        },
+                    )
+                    print(
+                        f"Dòng {row.row_number}: đã lấy POST_ID {post_id} "
+                        "từ Post Link"
+                    )
+                    continue
+
                 video_id = row.video_id
                 if not video_id:
                     if telegram is None:
