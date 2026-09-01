@@ -13,6 +13,7 @@ from src.sheet_client import (
     COL_POST_ID,
     COL_POST_LINK,
     COL_STATUS,
+    COL_VIDEO_ID,
     SheetRepository,
 )
 from src.telegram_client import TelegramDownloader, parse_message_link
@@ -56,26 +57,32 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
         for row in rows:
             try:
                 sheet.update(row.row_number, **{COL_STATUS: "Đang xử lý"})
-                with tempfile.TemporaryDirectory(prefix="auto-post-page-") as temp_dir:
-                    video_path = await telegram.download_video(
-                        row.telegram_link,
-                        Path(temp_dir),
+                video_id = row.video_id
+                if not video_id:
+                    with tempfile.TemporaryDirectory(prefix="auto-post-page-") as temp_dir:
+                        video_path = await telegram.download_video(
+                            row.telegram_link,
+                            Path(temp_dir),
+                        )
+                        video_id = publisher.upload_video(
+                            row.page_id,
+                            video_path,
+                            row.text_content,
+                            title=row.description,
+                        )
+                    sheet.update(
+                        row.row_number,
+                        **{
+                            COL_VIDEO_ID: video_id,
+                            COL_STATUS: "Đã upload, đang chờ Meta xử lý",
+                        },
                     )
-                    video_id = publisher.upload_video(
-                        row.page_id,
-                        video_path,
-                        row.text_content,
-                        title=row.description,
-                    )
-                sheet.update(
-                    row.row_number,
-                    **{COL_STATUS: "Đã upload, đang chờ Meta xử lý"},
-                )
 
                 post = publisher.wait_for_post(row.page_id, video_id)
                 sheet.update(
                     row.row_number,
                     **{
+                        COL_VIDEO_ID: post.video_id,
                         COL_POST_ID: post.post_id,
                         COL_POST_LINK: post.permalink_url,
                         COL_STATUS: "Thành công",
