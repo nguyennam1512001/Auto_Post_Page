@@ -136,7 +136,7 @@ class FacebookPagePublisher:
 
             post_id = str(payload.get("post_id") or "")
             permalink = str(payload.get("permalink_url") or "")
-            if post_id:
+            if post_id and not permalink:
                 # Graph API có thể trả post_id chỉ gồm phần số. Khi đọc Page
                 # Post phải dùng object story ID PAGE_ID_POST_ID; nếu chỉ gửi
                 # phần số, Meta hiểu thành singular status API đã deprecated.
@@ -146,25 +146,23 @@ class FacebookPagePublisher:
                 post_response = self.http.get(
                     f"{self.base_url}/{post_object_id}",
                     params={
-                        "fields": "id,permalink_url,call_to_action",
+                        "fields": "id,permalink_url",
                         "access_token": page_token,
                     },
                     timeout=60,
                 )
                 post_payload = self._raise_for_graph(post_response)
                 permalink = str(post_payload.get("permalink_url") or permalink)
-                cta = post_payload.get("call_to_action") or {}
-                cta_type = cta.get("type") if isinstance(cta, dict) else ""
-                if permalink and cta_type == "MESSAGE_PAGE":
-                    numeric_post_id = post_object_id.rsplit("_", 1)[-1]
-                    return PublishedPost(
-                        video_id=video_id,
-                        post_id=numeric_post_id,
-                        permalink_url=permalink,
-                    )
+            if permalink:
+                numeric_post_id = post_id.rsplit("_", 1)[-1] if post_id else ""
+                return PublishedPost(
+                    video_id=video_id,
+                    post_id=numeric_post_id,
+                    permalink_url=permalink,
+                )
             time.sleep(15)
 
         raise TimeoutError(
-            "Hết thời gian chờ bài viết hoặc CTA MESSAGE_PAGE chưa xuất hiện. "
+            "Hết thời gian chờ Meta tạo Post Link. "
             f"Trạng thái cuối: {last_status}"
         )
