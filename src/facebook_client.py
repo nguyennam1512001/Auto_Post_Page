@@ -148,7 +148,7 @@ class FacebookPagePublisher:
                 if "_" in post_id:
                     post_id = post_id.rsplit("_", 1)[-1]
                 return PublishedPost(video_id=video_id, post_id=post_id, permalink_url=permalink)
-            time.sleep(15)
+            time.sleep(5)
 
         raise TimeoutError(
             "Hết thời gian chờ Meta tạo POST_ID hoặc Post Link. "
@@ -195,7 +195,7 @@ class FacebookPagePublisher:
             post_id = str(payload.get("post_id") or "")
             if post_id:
                 return post_id.rsplit("_", 1)[-1]
-            time.sleep(10)
+            time.sleep(5)
 
         raise TimeoutError(
             "Hết thời gian lấy POST_ID từ Post Link. "
