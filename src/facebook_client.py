@@ -21,16 +21,23 @@ class FacebookPagePublisher:
         self.http = requests.Session()
 
     @staticmethod
-    def _raise_for_graph(response: requests.Response) -> dict:
+    def _raise_for_graph(response: requests.Response, operation: str) -> dict:
         try:
             payload = response.json()
         except ValueError as exc:
-            raise RuntimeError(f"Meta trả về dữ liệu không hợp lệ: HTTP {response.status_code}") from exc
+            raise RuntimeError(
+                f"Meta trả về dữ liệu không hợp lệ tại bước {operation}: "
+                f"HTTP {response.status_code}"
+            ) from exc
         if not response.ok or "error" in payload:
             error = payload.get("error", {})
             message = error.get("message", response.text)
             code = error.get("code", response.status_code)
-            raise RuntimeError(f"Meta API lỗi {code}: {message}")
+            subcode = error.get("error_subcode")
+            suffix = f", subcode {subcode}" if subcode is not None else ""
+            raise RuntimeError(
+                f"Meta API lỗi {code}{suffix} tại bước {operation}: {message}"
+            )
         return payload
 
     def _page_token(self, page_id: str) -> str:
@@ -39,7 +46,7 @@ class FacebookPagePublisher:
             params={"fields": "access_token", "access_token": self.access_token},
             timeout=60,
         )
-        payload = self._raise_for_graph(response)
+        payload = self._raise_for_graph(response, "lấy Page Access Token")
         return payload.get("access_token") or self.access_token
 
     def upload_video(
@@ -63,7 +70,7 @@ class FacebookPagePublisher:
             },
             timeout=60,
         )
-        session = self._raise_for_graph(start)
+        session = self._raise_for_graph(start, "khởi tạo upload video")
         upload_session_id = session["upload_session_id"]
         video_id = str(session["video_id"])
         start_offset = int(session["start_offset"])
@@ -84,7 +91,7 @@ class FacebookPagePublisher:
                     files={"video_file_chunk": ("video.mp4", chunk)},
                     timeout=300,
                 )
-                offsets = self._raise_for_graph(transfer)
+                offsets = self._raise_for_graph(transfer, "truyền dữ liệu video")
                 new_start = int(offsets["start_offset"])
                 end_offset = int(offsets["end_offset"])
                 if new_start <= start_offset:
@@ -108,7 +115,7 @@ class FacebookPagePublisher:
             },
             timeout=120,
         )
-        self._raise_for_graph(finish)
+        self._raise_for_graph(finish, "đăng video kèm nút Gửi tin nhắn")
         return video_id
 
     def wait_for_post(self, page_id: str, video_id: str, timeout_seconds: int = 900) -> PublishedPost:
