@@ -52,6 +52,9 @@ class FacebookPagePublisher:
         title: str = "",
     ) -> str:
         page_token = self._page_token(page_id)
+        # Meta giới hạn tiêu đề video tối đa 255 ký tự. SP_Description có thể
+        # dài hơn vì là mô tả sản phẩm, nên chỉ dùng 255 ký tự đầu làm title.
+        safe_title = (title or "").strip()[:255]
         start = self.http.post(
             f"{self.base_url}/{page_id}/videos",
             data={
@@ -99,7 +102,7 @@ class FacebookPagePublisher:
                 "upload_phase": "finish",
                 "upload_session_id": upload_session_id,
                 "description": message,
-                "title": title,
+                "title": safe_title,
                 "published": "true",
                 "call_to_action": json.dumps(call_to_action, ensure_ascii=False),
                 "access_token": page_token,
