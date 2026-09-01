@@ -62,16 +62,17 @@ class SheetRepository:
         self.worksheet = client.open_by_key(sheet_id).worksheet(tab_name)
         self.header_map: dict[str, int] = {}
 
-    def _refresh_headers(self) -> None:
-        headers = self.worksheet.row_values(HEADER_ROW)
+    def _refresh_headers(self, headers: list[str] | None = None) -> None:
+        if headers is None:
+            headers = self.worksheet.row_values(HEADER_ROW)
         self.header_map = {
             normalize_header(value): index + 1
             for index, value in enumerate(headers)
             if normalize_header(value)
         }
 
-    def prepare(self) -> None:
-        self._refresh_headers()
+    def prepare(self, headers: list[str] | None = None) -> None:
+        self._refresh_headers(headers)
         missing = [
             name for name in REQUIRED_COLUMNS
             if normalize_header(name) not in self.header_map
@@ -92,8 +93,9 @@ class SheetRepository:
         return row[column - 1].strip()
 
     def pending_rows(self) -> list[PostRow]:
-        self.prepare()
         values = self.worksheet.get_all_values()
+        headers = values[HEADER_ROW - 1] if len(values) >= HEADER_ROW else []
+        self.prepare(headers)
         columns = {
             name: self._column(name, optional=name == COL_TITLE)
             for name in [
