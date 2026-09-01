@@ -64,19 +64,8 @@ Tài khoản Telegram tạo session phải đang tham gia channel chứa video.
 
 Vào tab **Actions → Đăng bài lên Facebook Page → Run workflow**.
 
-Nên chạy lần đầu với:
-
-```text
-dry_run = true
-limit = 1
-```
-
-Sau khi dữ liệu được nhận đúng, chạy thật:
-
-```text
-dry_run = false
-limit = 1
-```
+Nhập `limit` để giới hạn số dòng cần xử lý, ví dụ `1` cho lần chạy đầu.
+Để trống `limit` nếu muốn xử lý tất cả các dòng đang chờ.
 
 ## Cơ chế chống đăng trùng
 
