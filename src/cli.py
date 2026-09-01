@@ -57,7 +57,26 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
             try:
                 sheet.update(row.row_number, **{COL_STATUS: "Đang xử lý"})
                 video_id = row.video_id
-                if not video_id:
+                if video_id:
+                    # Dòng đã upload: tuyệt đối không gọi lại Meta. Chỉ dựng
+                    # Post Link từ PAGE_ID và FB_UPLOAD_ID rồi ghi vào Sheet.
+                    permalink = (
+                        f"https://www.facebook.com/{row.page_id}/videos/{video_id}/"
+                    )
+                    sheet.update(
+                        row.row_number,
+                        **{
+                            COL_VIDEO_ID: video_id,
+                            COL_POST_LINK: permalink,
+                            COL_STATUS: permalink,
+                        },
+                    )
+                    print(
+                        f"Dòng {row.row_number}: dùng FB_UPLOAD_ID có sẵn, "
+                        f"không gọi Meta API: {permalink}"
+                    )
+                    continue
+                else:
                     with tempfile.TemporaryDirectory(prefix="auto-post-page-") as temp_dir:
                         video_path = await telegram.download_video(
                             row.telegram_link,
