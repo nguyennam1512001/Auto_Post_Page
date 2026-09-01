@@ -1,4 +1,3 @@
-/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 27: /bin/ps: Operation not permitted
 # Auto_Post_Page
 
 Tự động đọc Google Sheet, tải video từ Telegram bằng tài khoản đã tham gia
