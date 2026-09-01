@@ -83,5 +83,5 @@ Ngay sau khi upload xong, chương trình ghi `FB_UPLOAD_ID`. Nếu Meta vẫn �
 lý video hoặc CTA chưa xác minh được, lần chạy tiếp theo dùng lại Video ID đó
 để kiểm tra, không tải và đăng video lần nữa.
 
-Khi Meta trả về `permalink_url`, chương trình ghi `Post Link` và trạng thái
-`Thành công`. Chương trình không đọc hoặc xác minh CTA sau khi đăng.
+Khi Meta trả về `permalink_url`, chương trình ghi URL đó vào cả `Post Link` và
+`POST_STATUS`. Chương trình không đọc hoặc xác minh CTA sau khi đăng.
