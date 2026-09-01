@@ -137,8 +137,14 @@ class FacebookPagePublisher:
             post_id = str(payload.get("post_id") or "")
             permalink = str(payload.get("permalink_url") or "")
             if post_id:
+                # Graph API có thể trả post_id chỉ gồm phần số. Khi đọc Page
+                # Post phải dùng object story ID PAGE_ID_POST_ID; nếu chỉ gửi
+                # phần số, Meta hiểu thành singular status API đã deprecated.
+                post_object_id = (
+                    post_id if "_" in post_id else f"{page_id}_{post_id}"
+                )
                 post_response = self.http.get(
-                    f"{self.base_url}/{post_id}",
+                    f"{self.base_url}/{post_object_id}",
                     params={
                         "fields": "id,permalink_url,call_to_action",
                         "access_token": page_token,
@@ -150,7 +156,7 @@ class FacebookPagePublisher:
                 cta = post_payload.get("call_to_action") or {}
                 cta_type = cta.get("type") if isinstance(cta, dict) else ""
                 if permalink and cta_type == "MESSAGE_PAGE":
-                    numeric_post_id = post_id.rsplit("_", 1)[-1]
+                    numeric_post_id = post_object_id.rsplit("_", 1)[-1]
                     return PublishedPost(
                         video_id=video_id,
                         post_id=numeric_post_id,
