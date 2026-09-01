@@ -83,7 +83,7 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
                     **{
                         COL_VIDEO_ID: post.video_id,
                         COL_POST_LINK: post.permalink_url,
-                        COL_STATUS: "Thành công",
+                        COL_STATUS: post.permalink_url,
                     },
                 )
                 print(f"Dòng {row.row_number}: {post.permalink_url}")
