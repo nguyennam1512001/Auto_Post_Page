@@ -17,6 +17,8 @@ COL_PAGE_ID = "PAGE_ID"
 COL_TITLE = "Title"
 COL_TEXT_CONTENT = "Text_Content"
 COL_TELEGRAM_LINK = "Telegram_video_link"
+# Cột kỹ thuật riêng; không dùng "ID Video" vì cột đó đang chứa ARRAYFORMULA.
+COL_VIDEO_ID = "FB_UPLOAD_ID"
 COL_POST_ID = "POST_ID"
 COL_POST_LINK = "Post Link"
 COL_STATUS = "POST_STATUS"
@@ -25,6 +27,7 @@ REQUIRED_COLUMNS = [
     COL_PAGE_ID,
     COL_TEXT_CONTENT,
     COL_TELEGRAM_LINK,
+    COL_VIDEO_ID,
     COL_POST_ID,
     COL_POST_LINK,
     COL_STATUS,
@@ -42,6 +45,7 @@ class PostRow:
     description: str
     text_content: str
     telegram_link: str
+    video_id: str
     post_id: str
     post_link: str
     status: str
@@ -95,7 +99,7 @@ class SheetRepository:
             name: self._column(name, optional=name == COL_TITLE)
             for name in [
                 COL_PAGE_ID, COL_TITLE, COL_TEXT_CONTENT, COL_TELEGRAM_LINK,
-                COL_POST_ID, COL_POST_LINK, COL_STATUS,
+                COL_VIDEO_ID, COL_POST_ID, COL_POST_LINK, COL_STATUS,
             ]
         }
 
@@ -128,6 +132,7 @@ class SheetRepository:
                 description=self._cell(row, columns[COL_TITLE]),
                 text_content=text_content,
                 telegram_link=telegram_link,
+                video_id=self._cell(row, columns[COL_VIDEO_ID]),
                 post_id=post_id,
                 post_link=post_link,
                 status=self._cell(row, columns[COL_STATUS]),
