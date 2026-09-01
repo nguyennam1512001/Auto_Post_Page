@@ -24,8 +24,15 @@ COL_POST_ID = "POST_ID"
 COL_POST_LINK = "Post Link"
 COL_STATUS = "POST_STATUS"
 
-REQUIRED_INPUT_COLUMNS = [COL_PAGE_ID, COL_TEXT_CONTENT, COL_TELEGRAM_LINK]
-OUTPUT_COLUMNS = [COL_VIDEO_ID, COL_POST_ID, COL_POST_LINK, COL_STATUS]
+REQUIRED_COLUMNS = [
+    COL_PAGE_ID,
+    COL_TEXT_CONTENT,
+    COL_TELEGRAM_LINK,
+    COL_VIDEO_ID,
+    COL_POST_ID,
+    COL_POST_LINK,
+    COL_STATUS,
+]
 
 
 def normalize_header(value: str) -> str:
@@ -68,32 +75,11 @@ class SheetRepository:
     def prepare(self) -> None:
         self._refresh_headers()
         missing = [
-            name for name in REQUIRED_INPUT_COLUMNS
+            name for name in REQUIRED_COLUMNS
             if normalize_header(name) not in self.header_map
         ]
         if missing:
             raise ValueError(f"Sheet thiếu cột bắt buộc: {', '.join(missing)}")
-
-        missing_outputs = [
-            name for name in OUTPUT_COLUMNS
-            if normalize_header(name) not in self.header_map
-        ]
-        if missing_outputs:
-            current_headers = self.worksheet.row_values(HEADER_ROW)
-            first_new_column = len(current_headers) + 1
-            last_new_column = first_new_column + len(missing_outputs) - 1
-            if last_new_column > self.worksheet.col_count:
-                self.worksheet.add_cols(last_new_column - self.worksheet.col_count)
-
-            updates = [
-                {
-                    "range": gspread.utils.rowcol_to_a1(HEADER_ROW, column),
-                    "values": [[name]],
-                }
-                for column, name in enumerate(missing_outputs, start=first_new_column)
-            ]
-            self.worksheet.batch_update(updates, value_input_option="RAW")
-            self._refresh_headers()
 
     def _column(self, name: str, *, optional: bool = False) -> int | None:
         column = self.header_map.get(normalize_header(name))
