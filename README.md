@@ -15,9 +15,10 @@ Tên cột nằm ở hàng 1; vị trí A, B, C... không quan trọng.
 | `SP_Description` | không bắt buộc | Tiêu đề/mô tả nội bộ |
 | `Text_Content` | bắt buộc | Nội dung bài đăng |
 | `Telegram_video_link` | bắt buộc | Link `t.me/c/.../...` hoặc `t.me/username/...` |
-| `ID Video` | tự ghi | Giúp chạy lại mà không upload trùng |
+| `ID Video` | công thức Sheet | Tự tách ID từ `Post Link`; chương trình không ghi vào cột này |
 | `POST_ID` | tự ghi | ID dùng cho repo tạo Campaign |
 | `Post Link` | tự ghi | Link gửi nhân viên |
+| `FB_UPLOAD_ID` | tự thêm và tự ghi | ID upload kỹ thuật, giúp chạy lại không đăng trùng |
 | `POST_STATUS` | tự ghi | Tiến độ/lỗi đăng bài; tự thêm vì tab hiện chưa có |
 
 Nếu các cột đầu ra chưa tồn tại, chương trình tự thêm chúng vào cuối hàng 1.
@@ -79,7 +80,7 @@ limit = 1
 
 ## Cơ chế chống đăng trùng
 
-Ngay sau khi upload xong, chương trình ghi `ID Video`. Nếu Meta vẫn đang xử
+Ngay sau khi upload xong, chương trình ghi `FB_UPLOAD_ID`. Nếu Meta vẫn đang xử
 lý video hoặc CTA chưa xác minh được, lần chạy tiếp theo dùng lại Video ID đó
 để kiểm tra, không tải và đăng video lần nữa.
 
