@@ -52,6 +52,7 @@ def parse_message_link(link: str) -> TelegramMessageRef:
 class TelegramDownloader:
     def __init__(self, api_id: int, api_hash: str, session: str) -> None:
         self.client = TelegramClient(StringSession(session), api_id, api_hash)
+        self._entities: dict[int | str, object] = {}
 
     async def __aenter__(self) -> "TelegramDownloader":
         await self.client.connect()
@@ -64,7 +65,10 @@ class TelegramDownloader:
 
     async def download_video(self, link: str, destination: Path) -> Path:
         ref = parse_message_link(link)
-        entity = await self.client.get_input_entity(ref.entity)
+        entity = self._entities.get(ref.entity)
+        if entity is None:
+            entity = await self.client.get_input_entity(ref.entity)
+            self._entities[ref.entity] = entity
         message = await self.client.get_messages(entity, ids=ref.message_id)
         if not message:
             raise ValueError("Không tìm thấy tin nhắn Telegram hoặc tài khoản không có quyền xem")
