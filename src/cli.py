@@ -13,7 +13,6 @@ from src.sheet_client import (
     COL_POST_ID,
     COL_POST_LINK,
     COL_STATUS,
-    COL_VIDEO_ID,
     SheetRepository,
 )
 from src.telegram_client import TelegramDownloader, parse_message_link
@@ -72,17 +71,13 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
                         )
                     sheet.update(
                         row.row_number,
-                        **{
-                            COL_VIDEO_ID: video_id,
-                            COL_STATUS: "Đã upload, đang chờ Meta xử lý",
-                        },
+                        **{COL_STATUS: "Đã upload, đang chờ Meta xử lý"},
                     )
 
                 post = publisher.wait_for_post(row.page_id, video_id)
                 sheet.update(
                     row.row_number,
                     **{
-                        COL_VIDEO_ID: post.video_id,
                         COL_POST_ID: post.post_id,
                         COL_POST_LINK: post.permalink_url,
                         COL_STATUS: "Thành công",
