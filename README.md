@@ -18,10 +18,11 @@ Tên cột nằm ở hàng 1; vị trí A, B, C... không quan trọng.
 | `ID Video` | công thức Sheet | Tự tách ID từ `Post Link`; chương trình không ghi vào cột này |
 | `POST_ID` | tự ghi | ID dùng cho repo tạo Campaign |
 | `Post Link` | tự ghi | Link gửi nhân viên |
-| `FB_UPLOAD_ID` | tự thêm và tự ghi | ID upload kỹ thuật, giúp chạy lại không đăng trùng |
-| `POST_STATUS` | tự ghi | Tiến độ/lỗi đăng bài; tự thêm vì tab hiện chưa có |
+| `FB_UPLOAD_ID` | bắt buộc, tự ghi | ID upload kỹ thuật, giúp chạy lại không đăng trùng |
+| `POST_STATUS` | bắt buộc, tự ghi | Tiến độ hoặc lỗi đăng bài |
 
-Nếu các cột đầu ra chưa tồn tại, chương trình tự thêm chúng vào cuối hàng 1.
+Bạn cần tạo đầy đủ các cột trên ở hàng 1. Chương trình không tự thêm, xóa hoặc
+di chuyển cột. Nếu thiếu cột, chương trình dừng và báo tên cột bị thiếu.
 Dòng đã có `POST_ID` hoặc `Post Link` sẽ được bỏ qua.
 
 ## Repository secrets
