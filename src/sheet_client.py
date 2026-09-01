@@ -46,9 +46,6 @@ class PostRow:
     text_content: str
     telegram_link: str
     video_id: str
-    post_id: str
-    post_link: str
-    status: str
 
 
 class SheetRepository:
@@ -99,7 +96,7 @@ class SheetRepository:
             name: self._column(name, optional=name == COL_TITLE)
             for name in [
                 COL_PAGE_ID, COL_TITLE, COL_TEXT_CONTENT, COL_TELEGRAM_LINK,
-                COL_VIDEO_ID, COL_POST_ID, COL_POST_LINK, COL_STATUS,
+                COL_VIDEO_ID, COL_POST_LINK,
             ]
         }
 
@@ -108,7 +105,6 @@ class SheetRepository:
             page_id = self._cell(row, columns[COL_PAGE_ID])
             text_content = self._cell(row, columns[COL_TEXT_CONTENT])
             telegram_link = self._cell(row, columns[COL_TELEGRAM_LINK])
-            post_id = self._cell(row, columns[COL_POST_ID])
             post_link = self._cell(row, columns[COL_POST_LINK])
 
             if not any([page_id, text_content, telegram_link]):
@@ -133,9 +129,6 @@ class SheetRepository:
                 text_content=text_content,
                 telegram_link=telegram_link,
                 video_id=self._cell(row, columns[COL_VIDEO_ID]),
-                post_id=post_id,
-                post_link=post_link,
-                status=self._cell(row, columns[COL_STATUS]),
             ))
         return rows
 
