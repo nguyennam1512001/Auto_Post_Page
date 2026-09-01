@@ -3,11 +3,6 @@ name: Đăng bài lên Facebook Page
 on:
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Chỉ kiểm tra dữ liệu, không tải video hoặc đăng bài"
-        required: false
-        default: true
-        type: boolean
       limit:
         description: "Số dòng tối đa cần xử lý (để trống = tất cả)"
         required: false
@@ -43,9 +38,6 @@ jobs:
         shell: bash
         run: |
           args=()
-          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
-            args+=(--dry-run)
-          fi
           if [[ -n "${{ inputs.limit }}" ]]; then
             args+=(--limit "${{ inputs.limit }}")
           fi
