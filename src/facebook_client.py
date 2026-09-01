@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,23 +22,16 @@ class FacebookPagePublisher:
         self.http = requests.Session()
 
     @staticmethod
-    def _raise_for_graph(response: requests.Response, operation: str) -> dict:
+    def _raise_for_graph(response: requests.Response) -> dict:
         try:
             payload = response.json()
         except ValueError as exc:
-            raise RuntimeError(
-                f"Meta trả về dữ liệu không hợp lệ tại bước {operation}: "
-                f"HTTP {response.status_code}"
-            ) from exc
+            raise RuntimeError(f"Meta trả về dữ liệu không hợp lệ: HTTP {response.status_code}") from exc
         if not response.ok or "error" in payload:
             error = payload.get("error", {})
             message = error.get("message", response.text)
             code = error.get("code", response.status_code)
-            subcode = error.get("error_subcode")
-            suffix = f", subcode {subcode}" if subcode is not None else ""
-            raise RuntimeError(
-                f"Meta API lỗi {code}{suffix} tại bước {operation}: {message}"
-            )
+            raise RuntimeError(f"Meta API lỗi {code}: {message}")
         return payload
 
     def _page_token(self, page_id: str) -> str:
@@ -46,7 +40,7 @@ class FacebookPagePublisher:
             params={"fields": "access_token", "access_token": self.access_token},
             timeout=60,
         )
-        payload = self._raise_for_graph(response, "lấy Page Access Token")
+        payload = self._raise_for_graph(response)
         return payload.get("access_token") or self.access_token
 
     def upload_video(
@@ -70,7 +64,7 @@ class FacebookPagePublisher:
             },
             timeout=60,
         )
-        session = self._raise_for_graph(start, "khởi tạo upload video")
+        session = self._raise_for_graph(start)
         upload_session_id = session["upload_session_id"]
         video_id = str(session["video_id"])
         start_offset = int(session["start_offset"])
@@ -91,7 +85,7 @@ class FacebookPagePublisher:
                     files={"video_file_chunk": ("video.mp4", chunk)},
                     timeout=300,
                 )
-                offsets = self._raise_for_graph(transfer, "truyền dữ liệu video")
+                offsets = self._raise_for_graph(transfer)
                 new_start = int(offsets["start_offset"])
                 end_offset = int(offsets["end_offset"])
                 if new_start <= start_offset:
@@ -115,15 +109,40 @@ class FacebookPagePublisher:
             },
             timeout=120,
         )
-        self._raise_for_graph(finish, "đăng video kèm nút Gửi tin nhắn")
+        self._raise_for_graph(finish)
         return video_id
 
     def wait_for_post(self, page_id: str, video_id: str, timeout_seconds: int = 900) -> PublishedPost:
-        # Không gọi API để kiểm tra lại video/post. Graph API v26 có thể trả
-        # lỗi 100 cho các field của Video node dù upload đã thành công. PAGE_ID
-        # và FB_UPLOAD_ID đã đủ để tạo URL video công khai dùng làm Post Link.
-        return PublishedPost(
-            video_id=video_id,
-            post_id="",
-            permalink_url=f"https://www.facebook.com/{page_id}/videos/{video_id}/",
+        page_token = self._page_token(page_id)
+        deadline = time.monotonic() + timeout_seconds
+        last_status = ""
+        while time.monotonic() < deadline:
+            response = self.http.get(
+                f"{self.base_url}/{video_id}",
+                params={
+                    "fields": "id,post_id,permalink_url,call_to_action,status",
+                    "access_token": page_token,
+                },
+                timeout=60,
+            )
+            payload = self._raise_for_graph(response)
+            status = payload.get("status") or {}
+            last_status = str(status)
+            video_status = status.get("video_status") if isinstance(status, dict) else ""
+            if video_status == "error":
+                raise RuntimeError(f"Meta xử lý video thất bại: {status}")
+
+            post_id = str(payload.get("post_id") or "")
+            permalink = str(payload.get("permalink_url") or "")
+            cta = payload.get("call_to_action") or {}
+            cta_type = cta.get("type") if isinstance(cta, dict) else ""
+            if post_id and permalink and cta_type == "MESSAGE_PAGE":
+                if "_" in post_id:
+                    post_id = post_id.rsplit("_", 1)[-1]
+                return PublishedPost(video_id=video_id, post_id=post_id, permalink_url=permalink)
+            time.sleep(15)
+
+        raise TimeoutError(
+            "Hết thời gian chờ bài viết hoặc CTA MESSAGE_PAGE chưa xuất hiện. "
+            f"Trạng thái cuối: {last_status}"
         )
