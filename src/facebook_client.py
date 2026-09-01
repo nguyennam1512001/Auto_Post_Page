@@ -134,6 +134,8 @@ class FacebookPagePublisher:
 
             post_id = str(payload.get("post_id") or "")
             permalink = str(payload.get("permalink_url") or "")
+            if permalink.startswith("/"):
+                permalink = f"https://www.facebook.com{permalink}"
             if post_id and permalink:
                 if "_" in post_id:
                     post_id = post_id.rsplit("_", 1)[-1]
