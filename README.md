@@ -2,7 +2,7 @@
 
 Tự động đọc Google Sheet, tải video từ Telegram bằng tài khoản đã tham gia
 channel, đăng video công khai lên Facebook Page với nút **Gửi tin nhắn**, sau
-đó ghi `Post Link`, `FB_UPLOAD_ID` và `POST_STATUS` ngược lại Sheet.
+đó ghi `POST_ID`, `Post Link` và trạng thái ngược lại Sheet.
 
 ## Cột Google Sheet
 
@@ -15,13 +15,14 @@ Tên cột nằm ở hàng 1; vị trí A, B, C... không quan trọng.
 | `Text_Content` | bắt buộc | Nội dung bài đăng |
 | `Telegram_video_link` | bắt buộc | Link `t.me/c/.../...` hoặc `t.me/username/...` |
 | `ID Video` | công thức Sheet | Tự tách ID từ `Post Link`; chương trình không ghi vào cột này |
+| `POST_ID` | tự ghi | ID dùng cho repo tạo Campaign |
 | `Post Link` | tự ghi | Link gửi nhân viên |
 | `FB_UPLOAD_ID` | bắt buộc, tự ghi | ID upload kỹ thuật, giúp chạy lại không đăng trùng |
 | `POST_STATUS` | bắt buộc, tự ghi | Tiến độ hoặc lỗi đăng bài |
 
 Bạn cần tạo đầy đủ các cột trên ở hàng 1. Chương trình không tự thêm, xóa hoặc
 di chuyển cột. Nếu thiếu cột, chương trình dừng và báo tên cột bị thiếu.
-Dòng đã có `Post Link` sẽ được bỏ qua.
+Dòng đã có `POST_ID` hoặc `Post Link` sẽ được bỏ qua.
 
 ## Repository secrets
 
@@ -83,5 +84,5 @@ Ngay sau khi upload xong, chương trình ghi `FB_UPLOAD_ID`. Nếu Meta vẫn �
 lý video hoặc CTA chưa xác minh được, lần chạy tiếp theo dùng lại Video ID đó
 để kiểm tra, không tải và đăng video lần nữa.
 
-Khi Meta trả về `permalink_url`, chương trình ghi URL đó vào cả `Post Link` và
-`POST_STATUS`. Chương trình không đọc hoặc xác minh CTA sau khi đăng.
+Chỉ khi bài có `post_id`, `permalink_url` và CTA trả về là `MESSAGE_PAGE`, chương
+trình mới ghi trạng thái `Thành công - CTA MESSAGE_PAGE`.
