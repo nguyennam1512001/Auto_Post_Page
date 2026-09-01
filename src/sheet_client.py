@@ -14,7 +14,7 @@ SCOPES = [
 HEADER_ROW = 1
 
 COL_PAGE_ID = "PAGE_ID"
-COL_DESCRIPTION = "SP_Description"
+COL_TITLE = "Title"
 COL_TEXT_CONTENT = "Text_Content"
 COL_TELEGRAM_LINK = "Telegram_video_link"
 # Cột kỹ thuật riêng; không dùng "ID Video" vì cột đó đang chứa ARRAYFORMULA.
@@ -96,9 +96,9 @@ class SheetRepository:
         self.prepare()
         values = self.worksheet.get_all_values()
         columns = {
-            name: self._column(name, optional=name == COL_DESCRIPTION)
+            name: self._column(name, optional=name == COL_TITLE)
             for name in [
-                COL_PAGE_ID, COL_DESCRIPTION, COL_TEXT_CONTENT, COL_TELEGRAM_LINK,
+                COL_PAGE_ID, COL_TITLE, COL_TEXT_CONTENT, COL_TELEGRAM_LINK,
                 COL_VIDEO_ID, COL_POST_ID, COL_POST_LINK, COL_STATUS,
             ]
         }
@@ -129,7 +129,7 @@ class SheetRepository:
             rows.append(PostRow(
                 row_number=row_number,
                 page_id=page_id,
-                description=self._cell(row, columns[COL_DESCRIPTION]),
+                description=self._cell(row, columns[COL_TITLE]),
                 text_content=text_content,
                 telegram_link=telegram_link,
                 video_id=self._cell(row, columns[COL_VIDEO_ID]),
