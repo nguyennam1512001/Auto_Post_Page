@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import tempfile
+from contextlib import AsyncExitStack
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -49,16 +50,21 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
         settings.fb_access_token,
         settings.fb_graph_version,
     )
-    async with TelegramDownloader(
-        settings.telegram_api_id,
-        settings.telegram_api_hash,
-        settings.telegram_session,
-    ) as telegram:
+    async with AsyncExitStack() as stack:
+        telegram: TelegramDownloader | None = None
         for row in rows:
             try:
                 sheet.update(row.row_number, **{COL_STATUS: "Đang xử lý"})
                 video_id = row.video_id
                 if not video_id:
+                    if telegram is None:
+                        telegram = await stack.enter_async_context(
+                            TelegramDownloader(
+                                settings.telegram_api_id,
+                                settings.telegram_api_hash,
+                                settings.telegram_session,
+                            )
+                        )
                     with tempfile.TemporaryDirectory(prefix="auto-post-page-") as temp_dir:
                         video_path = await telegram.download_video(
                             row.telegram_link,
