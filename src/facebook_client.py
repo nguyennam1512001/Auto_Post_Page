@@ -1,0 +1,146 @@
+/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 27: /bin/ps: Operation not permitted
+from __future__ import annotations
+
+import json
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+import requests
+
+
+@dataclass(frozen=True)
+class PublishedPost:
+    video_id: str
+    post_id: str
+    permalink_url: str
+
+
+class FacebookPagePublisher:
+    def __init__(self, access_token: str, graph_version: str = "v25.0") -> None:
+        self.access_token = access_token
+        self.base_url = f"https://graph.facebook.com/{graph_version}"
+        self.http = requests.Session()
+
+    @staticmethod
+    def _raise_for_graph(response: requests.Response) -> dict:
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise RuntimeError(f"Meta trả về dữ liệu không hợp lệ: HTTP {response.status_code}") from exc
+        if not response.ok or "error" in payload:
+            error = payload.get("error", {})
+            message = error.get("message", response.text)
+            code = error.get("code", response.status_code)
+            raise RuntimeError(f"Meta API lỗi {code}: {message}")
+        return payload
+
+    def _page_token(self, page_id: str) -> str:
+        response = self.http.get(
+            f"{self.base_url}/{page_id}",
+            params={"fields": "access_token", "access_token": self.access_token},
+            timeout=60,
+        )
+        payload = self._raise_for_graph(response)
+        return payload.get("access_token") or self.access_token
+
+    def upload_video(
+        self,
+        page_id: str,
+        video_path: Path,
+        message: str,
+        *,
+        title: str = "",
+    ) -> str:
+        page_token = self._page_token(page_id)
+        start = self.http.post(
+            f"{self.base_url}/{page_id}/videos",
+            data={
+                "upload_phase": "start",
+                "file_size": video_path.stat().st_size,
+                "access_token": page_token,
+            },
+            timeout=60,
+        )
+        session = self._raise_for_graph(start)
+        upload_session_id = session["upload_session_id"]
+        video_id = str(session["video_id"])
+        start_offset = int(session["start_offset"])
+        end_offset = int(session["end_offset"])
+
+        with video_path.open("rb") as video_file:
+            while start_offset < end_offset:
+                video_file.seek(start_offset)
+                chunk = video_file.read(end_offset - start_offset)
+                transfer = self.http.post(
+                    f"{self.base_url}/{page_id}/videos",
+                    data={
+                        "upload_phase": "transfer",
+                        "upload_session_id": upload_session_id,
+                        "start_offset": start_offset,
+                        "access_token": page_token,
+                    },
+                    files={"video_file_chunk": ("video.mp4", chunk)},
+                    timeout=300,
+                )
+                offsets = self._raise_for_graph(transfer)
+                new_start = int(offsets["start_offset"])
+                end_offset = int(offsets["end_offset"])
+                if new_start <= start_offset:
+                    raise RuntimeError("Meta không cập nhật tiến độ upload video")
+                start_offset = new_start
+
+        call_to_action = {
+            "type": "MESSAGE_PAGE",
+            "value": {"link": f"https://m.me/{page_id}"},
+        }
+        finish = self.http.post(
+            f"{self.base_url}/{page_id}/videos",
+            data={
+                "upload_phase": "finish",
+                "upload_session_id": upload_session_id,
+                "description": message,
+                "title": title,
+                "published": "true",
+                "call_to_action": json.dumps(call_to_action, ensure_ascii=False),
+                "access_token": page_token,
+            },
+            timeout=120,
+        )
+        self._raise_for_graph(finish)
+        return video_id
+
+    def wait_for_post(self, page_id: str, video_id: str, timeout_seconds: int = 900) -> PublishedPost:
+        page_token = self._page_token(page_id)
+        deadline = time.monotonic() + timeout_seconds
+        last_status = ""
+        while time.monotonic() < deadline:
+            response = self.http.get(
+                f"{self.base_url}/{video_id}",
+                params={
+                    "fields": "id,post_id,permalink_url,call_to_action,status",
+                    "access_token": page_token,
+                },
+                timeout=60,
+            )
+            payload = self._raise_for_graph(response)
+            status = payload.get("status") or {}
+            last_status = str(status)
+            video_status = status.get("video_status") if isinstance(status, dict) else ""
+            if video_status == "error":
+                raise RuntimeError(f"Meta xử lý video thất bại: {status}")
+
+            post_id = str(payload.get("post_id") or "")
+            permalink = str(payload.get("permalink_url") or "")
+            cta = payload.get("call_to_action") or {}
+            cta_type = cta.get("type") if isinstance(cta, dict) else ""
+            if post_id and permalink and cta_type == "MESSAGE_PAGE":
+                if "_" in post_id:
+                    post_id = post_id.rsplit("_", 1)[-1]
+                return PublishedPost(video_id=video_id, post_id=post_id, permalink_url=permalink)
+            time.sleep(15)
+
+        raise TimeoutError(
+            "Hết thời gian chờ bài viết hoặc CTA MESSAGE_PAGE chưa xuất hiện. "
+            f"Trạng thái cuối: {last_status}"
+        )
