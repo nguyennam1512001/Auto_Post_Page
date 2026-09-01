@@ -1,0 +1,54 @@
+/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 27: /bin/ps: Operation not permitted
+name: Đăng bài lên Facebook Page
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Chỉ kiểm tra dữ liệu, không tải video hoặc đăng bài"
+        required: false
+        default: true
+        type: boolean
+      limit:
+        description: "Số dòng tối đa cần xử lý (để trống = tất cả)"
+        required: false
+        type: string
+
+concurrency:
+  group: publish-facebook-page-posts
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      GOOGLE_SHEET_TAB: ${{ secrets.GOOGLE_SHEET_TAB }}
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+      FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+      FB_GRAPH_VERSION: ${{ vars.FB_GRAPH_VERSION || 'v25.0' }}
+      TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+      TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Cài thư viện
+        run: pip install -r requirements.txt
+      - name: Chạy đăng bài
+        shell: bash
+        run: |
+          args=()
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+          if [[ -n "${{ inputs.limit }}" ]]; then
+            args+=(--limit "${{ inputs.limit }}")
+          fi
+          python run.py "${args[@]}"
+
