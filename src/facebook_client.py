@@ -4,6 +4,7 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 
@@ -151,5 +152,52 @@ class FacebookPagePublisher:
 
         raise TimeoutError(
             "Hết thời gian chờ Meta tạo POST_ID hoặc Post Link. "
+            f"Trạng thái cuối: {last_status}"
+        )
+
+
+    @staticmethod
+    def _video_id_from_permalink(permalink_url: str) -> str:
+        parsed = urlparse((permalink_url or "").strip())
+        path = parsed.path if parsed.scheme else permalink_url
+        parts = [part for part in path.split("/") if part]
+        for marker in ("reel", "videos"):
+            if marker in parts:
+                index = parts.index(marker) + 1
+                if index < len(parts) and parts[index].isdigit():
+                    return parts[index]
+        raise ValueError(
+            "Post Link phải có dạng facebook.com/reel/ID hoặc facebook.com/.../videos/ID"
+        )
+
+    def recover_post_id(
+        self,
+        page_id: str,
+        permalink_url: str,
+        timeout_seconds: int = 300,
+    ) -> str:
+        video_id = self._video_id_from_permalink(permalink_url)
+        page_token = self._page_token(page_id)
+        deadline = time.monotonic() + timeout_seconds
+        last_status = ""
+        while time.monotonic() < deadline:
+            response = self.http.get(
+                f"{self.base_url}/{video_id}",
+                params={
+                    "fields": "id,post_id,status",
+                    "access_token": page_token,
+                },
+                timeout=60,
+            )
+            payload = self._raise_for_graph(response)
+            status = payload.get("status") or {}
+            last_status = str(status)
+            post_id = str(payload.get("post_id") or "")
+            if post_id:
+                return post_id.rsplit("_", 1)[-1]
+            time.sleep(10)
+
+        raise TimeoutError(
+            "Hết thời gian lấy POST_ID từ Post Link. "
             f"Trạng thái cuối: {last_status}"
         )
