@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 from src.facebook_client import FacebookPagePublisher
 from src.settings import Settings
 from src.sheet_client import (
-    COL_POST_ID,
     COL_POST_LINK,
     COL_STATUS,
     COL_VIDEO_ID,
@@ -78,17 +77,20 @@ async def run(*, dry_run: bool = False, limit: int | None = None) -> None:
                         },
                     )
 
-                post = publisher.wait_for_post(row.page_id, video_id)
+                # Upload thành công khi đã có FB_UPLOAD_ID. Dùng URL video
+                # chuẩn làm Post Link; không đọc field call_to_action từ Meta.
+                post_link = (
+                    f"https://www.facebook.com/{row.page_id}/videos/{video_id}/"
+                )
                 sheet.update(
                     row.row_number,
                     **{
-                        COL_VIDEO_ID: post.video_id,
-                        COL_POST_ID: post.post_id,
-                        COL_POST_LINK: post.permalink_url,
-                        COL_STATUS: "Thành công - CTA MESSAGE_PAGE",
+                        COL_VIDEO_ID: video_id,
+                        COL_POST_LINK: post_link,
+                        COL_STATUS: "Thành công",
                     },
                 )
-                print(f"Dòng {row.row_number}: {post.permalink_url}")
+                print(f"Dòng {row.row_number}: {post_link}")
             except Exception as exc:  # noqa: BLE001
                 message = f"Lỗi: {exc}"
                 sheet.update(row.row_number, **{COL_STATUS: message[:500]})
