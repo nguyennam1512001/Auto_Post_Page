@@ -36,7 +36,7 @@ GOOGLE_SHEET_TAB
 TELEGRAM_API_ID
 TELEGRAM_API_HASH
 TELEGRAM_SESSION
-OPENAI_API_KEY
+GEMINI_API_KEY
 ```
 
 `FB_ACCESS_TOKEN` cần quyền quản lý/đăng bài trên tất cả Page được dùng.
@@ -77,8 +77,9 @@ Content từ Google Sheet → Run workflow**:
 - Bật `overwrite` chỉ khi muốn viết lại content đã có.
 - Nhập `limit` để thử với một số ít sản phẩm.
 
-Workflow dùng `gpt-5-nano` để tiết kiệm chi phí. API key chỉ lưu trong secret
-`OPENAI_API_KEY`, không ghi vào Google Sheet hay mã nguồn.
+Workflow dùng `gemini-3.7-flash` thuộc Gemini API Free Tier. API key chỉ lưu
+trong secret `GEMINI_API_KEY`, không ghi vào Google Sheet hay mã nguồn. Gói miễn
+phí có giới hạn lượt gọi và dữ liệu có thể được Google dùng để cải thiện sản phẩm.
 
 ## Chạy
 
