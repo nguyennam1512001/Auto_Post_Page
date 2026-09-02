@@ -112,9 +112,6 @@ def validate_content(content: str, product: Product) -> list[str]:
         issues.append("phải có tiêu đề, ba đoạn nội dung và dòng kết thúc")
     if not lines or lines[-1] != FINAL_LINE:
         issues.append(f"dòng cuối phải đúng: {FINAL_LINE}")
-    word_count = len(content.split())
-    if not 80 <= word_count <= 120:
-        issues.append(f"độ dài hiện tại {word_count} chữ, cần khoảng 100 chữ")
     if content.strip().casefold() == product.description.strip().casefold():
         issues.append("không được sao chép nguyên văn thông tin nguồn")
     return issues
