@@ -6,12 +6,13 @@ import argparse
 import json
 import os
 import re
+import time
 from dataclasses import dataclass
 
 import gspread
 from google import genai
 from google.oauth2.service_account import Credentials
-from google.genai import types
+from google.genai import errors, types
 
 
 SCOPES = [
@@ -93,6 +94,8 @@ def read_prompt_config(
 
 
 FINAL_LINE = "SIZE: 40–75kg. Kiểm tra hàng trước khi thanh toán."
+FALLBACK_MODELS = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]
+RETRY_DELAYS_SECONDS = [0, 5, 15]
 
 
 def validate_content(content: str, product: Product) -> list[str]:
@@ -115,6 +118,41 @@ def validate_content(content: str, product: Product) -> list[str]:
     if content.strip().casefold() == product.description.strip().casefold():
         issues.append("không được sao chép nguyên văn thông tin nguồn")
     return issues
+
+
+def request_gemini_with_fallback(
+    client: genai.Client, primary_model: str, contents: str
+) -> tuple[str, str]:
+    """Thử lại lỗi máy chủ và tự chuyển sang model Flash-Lite dự phòng."""
+    models = list(dict.fromkeys([primary_model, *FALLBACK_MODELS]))
+    last_error: errors.ServerError | None = None
+    for model in models:
+        for attempt, delay in enumerate(RETRY_DELAYS_SECONDS, start=1):
+            if delay:
+                print(f"Gemini quá tải; chờ {delay}s rồi thử lại {model}...")
+                time.sleep(delay)
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=(
+                            "Bạn là người viết quảng cáo thời trang tiếng Việt. "
+                            "Chỉ dùng dữ liệu nguồn; không tự thêm chất liệu, màu "
+                            "sắc, kiểu dáng hoặc thông số."
+                        ),
+                        max_output_tokens=700,
+                    ),
+                )
+                if model != primary_model:
+                    print(f"Đã chuyển sang model dự phòng {model}.")
+                return response.text or "", model
+            except errors.ServerError as exc:
+                last_error = exc
+                print(f"{model} lỗi máy chủ ở lần {attempt}/3: {exc}")
+    if last_error:
+        raise last_error
+    raise RuntimeError("Không có model Gemini khả dụng")
 
 
 def generate_content(
@@ -145,20 +183,11 @@ def generate_content(
         correction = ""
         if issues:
             correction = "\n\nHãy sửa các lỗi sau: " + "; ".join(issues)
-        response = client.models.generate_content(
-            model=model,
-            contents=model_input + correction,
-            config=types.GenerateContentConfig(
-                system_instruction=(
-                    "Bạn là người viết quảng cáo thời trang tiếng Việt. Chỉ dùng dữ "
-                    "liệu nguồn; không tự thêm chất liệu, màu sắc, kiểu dáng hoặc thông số."
-                ),
-                max_output_tokens=700,
-                thinking_config=types.ThinkingConfig(thinking_level="low"),
-            ),
+        response_text, _used_model = request_gemini_with_fallback(
+            client, model, model_input + correction
         )
         content = re.sub(
-            r'^\s*["“”]+|["“”]+\s*$', "", (response.text or "").strip()
+            r'^\s*["“”]+|["“”]+\s*$', "", response_text.strip()
         ).strip()
         if not content:
             issues = ["nội dung đang trống"]
@@ -208,7 +237,10 @@ def run(
         updates.append({"range": f"G{product.source_row}", "values": [[content]]})
     if updates:
         destination.batch_update(updates, value_input_option="RAW")
-    print(f"Hoàn tất: đã ghi {len(pending)} Text_Content bằng {model}.")
+    print(
+        f"Hoàn tất: đã ghi {len(pending)} Text_Content; "
+        f"model chính {model}, có fallback tự động."
+    )
 
 
 def main() -> None:
