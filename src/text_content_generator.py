@@ -7,6 +7,7 @@ import json
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
 import gspread
@@ -96,6 +97,7 @@ def read_prompt_config(
 FINAL_LINE = "SIZE: 40–75kg. Kiểm tra hàng trước khi thanh toán."
 FALLBACK_MODELS = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]
 RETRY_DELAYS_SECONDS = [0, 5, 15]
+DEFAULT_MAX_WORKERS = 3
 
 
 def validate_content(content: str, product: Product) -> list[str]:
@@ -195,6 +197,29 @@ def generate_content(
     raise ValueError(f"Nội dung {product.code} chưa đạt yêu cầu: {'; '.join(issues)}")
 
 
+def generate_product_content(
+    api_key: str,
+    model: str,
+    prompt: str,
+    template: str,
+    product: Product,
+) -> str:
+    """Tạo một bài với client riêng để có thể chạy song song an toàn."""
+    print(f"Đang viết {product.code}...")
+    with genai.Client(api_key=api_key) as client:
+        return generate_content(client, model, prompt, template, product)
+
+
+def max_workers_for(product_count: int) -> int:
+    """Giới hạn số yêu cầu Gemini đồng thời; mặc định 3 để tránh quá tải quota."""
+    configured = os.getenv("GEMINI_MAX_WORKERS", str(DEFAULT_MAX_WORKERS))
+    try:
+        max_workers = int(configured)
+    except ValueError as exc:
+        raise ValueError("GEMINI_MAX_WORKERS phải là số nguyên") from exc
+    return min(product_count, max(1, max_workers))
+
+
 def run(
     *,
     prompt_name: str,
@@ -202,7 +227,8 @@ def run(
     overwrite: bool = False,
     limit: int | None = None,
 ) -> None:
-    if not dry_run and not os.getenv("GEMINI_API_KEY"):
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not dry_run and not api_key:
         raise EnvironmentError("Thiếu GEMINI_API_KEY")
     spreadsheet = open_spreadsheet()
     prompt, template = read_prompt_config(spreadsheet, prompt_name)
@@ -225,18 +251,46 @@ def run(
         for product in pending:
             print(f"[DRY-RUN] Bài viết!D{product.source_row}/E{product.source_row} -> G{product.source_row} ({product.code})")
         return
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    if not pending:
+        print("Hoàn tất: không có Text_Content nào cần tạo.")
+        return
+    assert api_key is not None
     model = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.5-flash-lite")
-    updates = []
-    for product in pending:
-        print(f"Đang viết {product.code}...")
-        content = generate_content(client, model, prompt, template, product)
-        updates.append({"range": f"G{product.source_row}", "values": [[content]]})
-    if updates:
-        destination.batch_update(updates, value_input_option="RAW")
+    worker_count = max_workers_for(len(pending))
+    generated: dict[int, str] = {}
+    if worker_count == 1:
+        for product in pending:
+            generated[product.source_row] = generate_product_content(
+                api_key, model, prompt, template, product
+            )
+    else:
+        print(f"Chạy song song tối đa {worker_count} sản phẩm.")
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            futures = {
+                executor.submit(
+                    generate_product_content,
+                    api_key,
+                    model,
+                    prompt,
+                    template,
+                    product,
+                ): product
+                for product in pending
+            }
+            for future in as_completed(futures):
+                product = futures[future]
+                generated[product.source_row] = future.result()
+    updates = [
+        {
+            "range": f"G{product.source_row}",
+            "values": [[generated[product.source_row]]],
+        }
+        for product in pending
+    ]
+    destination.batch_update(updates, value_input_option="RAW")
     print(
         f"Hoàn tất: đã ghi {len(pending)} Text_Content; "
-        f"model chính {model}, có fallback tự động."
+        f"model chính {model}, tối đa {worker_count} luồng, có fallback tự động."
     )
 
 

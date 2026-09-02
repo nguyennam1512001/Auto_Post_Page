@@ -39,14 +39,16 @@ jobs:
       GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_TEXT_MODEL: gemini-3.5-flash-lite
+      GEMINI_MAX_WORKERS: "3"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-      - name: Cài thư viện
-        run: pip install -r requirements.txt
+          cache-dependency-path: requirements-text-content.txt
+      - name: Cài thư viện Text_Content
+        run: pip install --disable-pip-version-check -r requirements-text-content.txt
       - name: Tạo Text_Content
         shell: bash
         run: |
