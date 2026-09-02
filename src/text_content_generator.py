@@ -197,7 +197,7 @@ def run(
             print(f"[DRY-RUN] Bài viết!D{product.source_row}/E{product.source_row} -> G{product.source_row} ({product.code})")
         return
     client = OpenAI()
-    model = os.getenv("OPENAI_TEXT_MODEL", "gpt-5.4-nano")
+    model = os.getenv("OPENAI_TEXT_MODEL", "gpt-5-nano")
     updates = []
     for product in pending:
         print(f"Đang viết {product.code}...")
