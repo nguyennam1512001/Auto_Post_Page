@@ -77,9 +77,8 @@ Content từ Google Sheet → Run workflow**:
 - Bật `overwrite` chỉ khi muốn viết lại content đã có.
 - Nhập `limit` để thử với một số ít sản phẩm.
 
-Có thể tạo Repository Variable `OPENAI_TEXT_MODEL`; mặc định là
-`gpt-5.4-nano`. API key chỉ lưu trong secret `OPENAI_API_KEY`, không ghi vào
-Google Sheet hay mã nguồn.
+Workflow dùng `gpt-5-nano` để tiết kiệm chi phí. API key chỉ lưu trong secret
+`OPENAI_API_KEY`, không ghi vào Google Sheet hay mã nguồn.
 
 ## Chạy
 
