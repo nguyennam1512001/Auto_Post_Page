@@ -200,7 +200,7 @@ def run(
             print(f"[DRY-RUN] Bài viết!D{product.source_row}/E{product.source_row} -> G{product.source_row} ({product.code})")
         return
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    model = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.7-flash")
+    model = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.5-flash-lite")
     updates = []
     for product in pending:
         print(f"Đang viết {product.code}...")
