@@ -80,6 +80,9 @@ Content từ Google Sheet → Run workflow**:
 Workflow dùng `gemini-3.5-flash-lite` thuộc Gemini API Free Tier. API key chỉ lưu
 trong secret `GEMINI_API_KEY`, không ghi vào Google Sheet hay mã nguồn. Gói miễn
 phí có giới hạn lượt gọi và dữ liệu có thể được Google dùng để cải thiện sản phẩm.
+Khi Gemini báo lỗi máy chủ `503`, công cụ tự thử lại sau 5 và 15 giây; nếu vẫn
+quá tải, công cụ lần lượt chuyển sang `gemini-3.1-flash-lite` và
+`gemini-2.5-flash-lite`.
 
 ## Chạy
 
