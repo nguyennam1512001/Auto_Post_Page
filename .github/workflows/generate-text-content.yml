@@ -38,7 +38,7 @@ jobs:
       GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
       GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      OPENAI_TEXT_MODEL: ${{ vars.OPENAI_TEXT_MODEL || 'gpt-5.4-nano' }}
+      OPENAI_TEXT_MODEL: gpt-5-nano
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
