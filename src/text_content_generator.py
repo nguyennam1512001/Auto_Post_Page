@@ -9,8 +9,9 @@ import re
 from dataclasses import dataclass
 
 import gspread
+from google import genai
 from google.oauth2.service_account import Credentials
-from openai import OpenAI
+from google.genai import types
 
 
 SCOPES = [
@@ -117,7 +118,7 @@ def validate_content(content: str, product: Product) -> list[str]:
 
 
 def generate_content(
-    client: OpenAI,
+    client: genai.Client,
     model: str,
     prompt: str,
     template: str,
@@ -144,18 +145,20 @@ def generate_content(
         correction = ""
         if issues:
             correction = "\n\nHãy sửa các lỗi sau: " + "; ".join(issues)
-        response = client.responses.create(
+        response = client.models.generate_content(
             model=model,
-            instructions=(
-                "Bạn là người viết quảng cáo thời trang tiếng Việt. Chỉ dùng dữ "
-                "liệu nguồn; không tự thêm chất liệu, màu sắc, kiểu dáng hoặc thông số."
+            contents=model_input + correction,
+            config=types.GenerateContentConfig(
+                system_instruction=(
+                    "Bạn là người viết quảng cáo thời trang tiếng Việt. Chỉ dùng dữ "
+                    "liệu nguồn; không tự thêm chất liệu, màu sắc, kiểu dáng hoặc thông số."
+                ),
+                max_output_tokens=700,
+                thinking_config=types.ThinkingConfig(thinking_level="low"),
             ),
-            input=model_input + correction,
-            max_output_tokens=700,
-            store=False,
         )
         content = re.sub(
-            r'^\s*["“”]+|["“”]+\s*$', "", response.output_text.strip()
+            r'^\s*["“”]+|["“”]+\s*$', "", (response.text or "").strip()
         ).strip()
         if not content:
             issues = ["nội dung đang trống"]
@@ -173,8 +176,8 @@ def run(
     overwrite: bool = False,
     limit: int | None = None,
 ) -> None:
-    if not dry_run and not os.getenv("OPENAI_API_KEY"):
-        raise EnvironmentError("Thiếu OPENAI_API_KEY")
+    if not dry_run and not os.getenv("GEMINI_API_KEY"):
+        raise EnvironmentError("Thiếu GEMINI_API_KEY")
     spreadsheet = open_spreadsheet()
     prompt, template = read_prompt_config(spreadsheet, prompt_name)
     destination = spreadsheet.worksheet(DESTINATION_TAB)
@@ -196,8 +199,8 @@ def run(
         for product in pending:
             print(f"[DRY-RUN] Bài viết!D{product.source_row}/E{product.source_row} -> G{product.source_row} ({product.code})")
         return
-    client = OpenAI()
-    model = os.getenv("OPENAI_TEXT_MODEL", "gpt-5-nano")
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    model = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.7-flash")
     updates = []
     for product in pending:
         print(f"Đang viết {product.code}...")
