@@ -1,0 +1,49 @@
+name: Tạo Text Content từ Google Sheet
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Chạy thử, không gọi AI và không ghi Sheet"
+        required: false
+        default: true
+        type: boolean
+      overwrite:
+        description: "Ghi đè Text_Content đã có"
+        required: false
+        default: false
+        type: boolean
+      limit:
+        description: "Số sản phẩm tối đa; để trống = tất cả"
+        required: false
+        type: string
+
+concurrency:
+  group: generate-text-content
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_TEXT_MODEL: ${{ vars.OPENAI_TEXT_MODEL || 'gpt-5.4-nano' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Cài thư viện
+        run: pip install -r requirements.txt
+      - name: Tạo Text_Content
+        shell: bash
+        run: |
+          args=()
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then args+=(--dry-run); fi
+          if [[ "${{ inputs.overwrite }}" == "true" ]]; then args+=(--overwrite); fi
+          if [[ -n "${{ inputs.limit }}" ]]; then args+=(--limit "${{ inputs.limit }}"); fi
+          python -m src.text_content_generator "${args[@]}"
