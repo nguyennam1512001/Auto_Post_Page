@@ -36,6 +36,7 @@ GOOGLE_SHEET_TAB
 TELEGRAM_API_ID
 TELEGRAM_API_HASH
 TELEGRAM_SESSION
+OPENAI_API_KEY
 ```
 
 `FB_ACCESS_TOKEN` cần quyền quản lý/đăng bài trên tất cả Page được dùng.
@@ -59,6 +60,24 @@ python scripts/generate_telegram_session.py
    `TELEGRAM_SESSION`. Không commit chuỗi session vào repository.
 
 Tài khoản Telegram tạo session phải đang tham gia channel chứa video.
+
+## Tự động tạo Text_Content
+
+Workflow **Tạo Text Content từ Google Sheet** đọc câu lệnh tại `Promt GPT!B2`,
+áp dụng filter view **có ads** của tab `TỔNG HỢP`, lấy mã ở cột C và thông tin
+sản phẩm ở cột E, rồi ghi mã và nội dung vào cột D/G của tab `Bài viết`.
+
+Mặc định công cụ bỏ qua mã đã có `Text_Content`. Trong **Actions → Tạo Text
+Content từ Google Sheet → Run workflow**:
+
+- Giữ `dry_run` bật để xem trước danh sách sẽ xử lý mà không gọi AI.
+- Tắt `dry_run` để chạy thật.
+- Bật `overwrite` chỉ khi muốn viết lại content đã có.
+- Nhập `limit` để thử với một số ít sản phẩm.
+
+Có thể tạo Repository Variable `OPENAI_TEXT_MODEL`; mặc định là
+`gpt-5.4-nano`. API key chỉ lưu trong secret `OPENAI_API_KEY`, không ghi vào
+Google Sheet hay mã nguồn.
 
 ## Chạy
 
