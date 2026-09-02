@@ -3,6 +3,14 @@ name: Tạo Text Content từ Google Sheet
 on:
   workflow_dispatch:
     inputs:
+      Prompt_Name:
+        description: "Chọn bộ Prompt và Content mẫu trong tab Promt GPT"
+        required: true
+        default: nam
+        type: choice
+        options:
+          - nam
+          - khương
       dry_run:
         description: "Chạy thử, không gọi AI và không ghi Sheet"
         required: false
@@ -43,6 +51,7 @@ jobs:
         shell: bash
         run: |
           args=()
+          args+=(--prompt-name "${{ inputs.Prompt_Name }}")
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then args+=(--dry-run); fi
           if [[ "${{ inputs.overwrite }}" == "true" ]]; then args+=(--overwrite); fi
           if [[ -n "${{ inputs.limit }}" ]]; then args+=(--limit "${{ inputs.limit }}"); fi
